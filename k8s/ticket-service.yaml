@@ -1,0 +1,77 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ticket-service-application-properties
+data:
+  application.properties: |-
+    # Common
+    spring.application.name=ticket-service
+    server.port=8081
+    logging.level.org.springframework.web=DEBUG
+    logging.level.org.jooq=DEBUG
+    # DB & Migration
+    spring.datasource.url=jdbc:postgresql://ticket-db-service:5433/ticketdb
+    spring.datasource.username=root
+    spring.datasource.password=root
+    spring.liquibase.change-log=classpath:/db/changelog/changelog-master.xml
+    # Swagger
+    springdoc.swagger-ui.disable-swagger-default-url=true
+    springdoc.swagger-ui.path=/api/
+    springdoc.swagger-ui.display-request-duration=true
+    spring.mvc.pathmatch.matching-strategy=ant_path_matcher
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ticket-service-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ticket-service
+  template:
+    metadata:
+      labels:
+        app: ticket-service
+    spec:
+      volumes:
+        - name: ticket-service-config
+          configMap:
+            name: ticket-service-application-properties
+      # Init Container для проверки готовности PostgreSQL
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.36
+          command:
+            - 'sh'
+            - '-c'
+            - 'until nc -z ticket-db-service 5433; do echo "Ticket-service PostgreSQL не готов..."; sleep 2; done'
+      containers:
+        - name: ticket-service
+          image: ticket-service:1.0
+          ports:
+            - containerPort: 8081
+          #          env:
+          #            - name: POSTGRES_PASSWORD  # Переменная, которую использует Spring в application.properties
+          #              valueFrom:
+          #                secretKeyRef:
+          #                  name: postgres-secret  # Имя вашего Secret
+          #                  key: password          # Ключ в Secret
+          env:
+            - name: SPRING_CONFIG_LOCATION
+              value: file:/config/application.properties
+          volumeMounts:
+            - mountPath: /config
+              name: ticket-service-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ticket-service
+spec:
+  selector:
+    app: ticket-service
+  ports:
+    - protocol: TCP
+      port: 8081       # Порт сервиса (внутри кластера)
+      targetPort: 8081  # Порт контейнера

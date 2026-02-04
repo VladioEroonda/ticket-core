@@ -1,0 +1,87 @@
+#apiVersion: v1
+#kind: PersistentVolume
+#metadata:
+#  name: ticket-db-pv
+#  labels:
+#    app: ticket-db
+#spec:
+#  storageClassName: manual # Ручное управление хранилищем
+#  capacity:
+#    storage: 2Gi
+#  accessModes:
+#    - ReadWriteOnce # Режим доступа, при котором если один под пишет, остальные могут только читать
+#  hostPath:
+#    path: /var/lib/posgresql/data # где будет храниться внутри контейнера БД
+#---
+#apiVersion: v1
+#kind: PersistentVolumeClaim
+#metadata:
+#  name: ticket-db-pvc
+#spec:
+#  storageClassName: manual
+#  accessModes:
+#    - ReadWriteOnce
+#  resources:
+#    requests:
+#      storage: 2Gi
+#---
+#apiVersion: v1
+#kind: Secret
+#metadata:
+#  name: postgres-secret
+#type: Opaque
+#stringData:
+#  password: "root"
+#---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ticket-db-statefulset
+spec:
+  serviceName: "ticket-db"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ticket-db
+  template:
+    metadata:
+      labels:
+        app: ticket-db
+    spec:
+      containers:
+        - name: ticket-db
+          image: postgres:15-alpine
+          args: [ "-p", "5433" ]
+          env:
+            - name: POSTGRES_DB
+              value: ticketdb
+            - name: POSTGRES_USER
+              value: root
+            - name: POSTGRES_PASSWORD
+              value: root
+          #              valueFrom:
+          #                secretKeyRef:
+          #                  name: postgres-secret
+          #                  key: password
+          ports:
+            - containerPort: 5433
+#          volumeMounts:
+#              - mountPath: "/var/lib/posgresql/data"
+#              name: ticket-db-persistent-storage
+#      volumes:
+#        - name: ticket-db-persistent-storage
+#          persistentVolumeClaim:
+#            claimName: ticket-db-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ticket-db-service  # DNS-имя: postgres-service.<namespace>.svc.cluster.local
+spec:
+  selector:
+    app: ticket-db
+  ports:
+    - protocol: TCP
+      port: 5433       # Порт сервиса (внутри кластера)
+      targetPort: 5433 # Порт контейнера
+  clusterIP: None # Закрываем БД от доступна из вне кластера

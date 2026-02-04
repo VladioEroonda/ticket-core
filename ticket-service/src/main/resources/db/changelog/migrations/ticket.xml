@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+
+    <property name="tableName" value="ticket" global="false"/>
+
+    <changeSet author="Eroonda" id="1">
+        <createTable tableName="${tableName}" schemaName="${schemaName}">
+            <column autoIncrement="true" name="id" type="BIGINT"/>
+            <column name="author_id" type="BIGINT"/>
+            <column name="performer_id" type="BIGINT"/>
+            <column name="department_id" type="BIGINT"/>
+            <column name="topic" type="VARCHAR(256)"/>
+            <column name="content_id" type="BIGINT"/>
+            <column name="status" type="VARCHAR(11)"/>
+            <column name="tags" type="VARCHAR(256)"/>
+            <column name="created_at" type="TIMESTAMP"/> <!-- Решил не заморачиваться с TimeZone-->
+            <column name="completed_at" type="TIMESTAMP"/>
+            <column name="priority" type="VARCHAR(6)"/>
+        </createTable>
+
+        <addPrimaryKey schemaName="${schemaName}" tableName="${tableName}" columnNames="id" constraintName="pk_ticket"/>
+
+        <addForeignKeyConstraint
+                baseTableSchemaName="${schemaName}"
+                baseTableName="${tableName}"
+                baseColumnNames="content_id"
+                referencedTableName="ticket_content"
+                referencedColumnNames="id"
+                constraintName="fk_ticket_content"
+                onDelete="CASCADE"/>
+
+        <addNotNullConstraint schemaName="${schemaName}" tableName="${tableName}" columnName="id"/>
+        <addNotNullConstraint schemaName="${schemaName}" tableName="${tableName}" columnName="author_id"/>
+        <addNotNullConstraint schemaName="${schemaName}" tableName="${tableName}" columnName="topic"/>
+        <addNotNullConstraint schemaName="${schemaName}" tableName="${tableName}" columnName="content_id"/>
+        <addNotNullConstraint schemaName="${schemaName}" tableName="${tableName}" columnName="status"/>
+        <addNotNullConstraint schemaName="${schemaName}" tableName="${tableName}" columnName="created_at"/>
+
+        <sql splitStatements="true">
+            ALTER TABLE ${tableName}
+                ADD CONSTRAINT check_ticket_status CHECK (status IN ('NEW', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'DELETED'));
+            ALTER TABLE ${tableName}
+                ADD CONSTRAINT check_ticket_priority CHECK (priority IN ('LOW', 'MEDIUM', 'HIGH'));
+        </sql>
+    </changeSet>
+</databaseChangeLog>
