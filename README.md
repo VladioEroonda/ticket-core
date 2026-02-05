@@ -17,8 +17,11 @@
 Открыть порты для дебага - ``open_ports.bat``
 В файл ``С:\Windows\System32\drivers\etc\hosts`` нужно добавить следующие записи:
 ```
-27.0.0.1 ticket-core.localhost
+127.0.0.1 ticketcore.localhost
 ```
+
+## API
+[ticket-service](http://ticketcore.localhost/tickets/api/swagger-ui/index.html)
 
 ## Используемые технологии
 Java 21, Lombok, Docker, K8s, Swagger (Spring Doc)
